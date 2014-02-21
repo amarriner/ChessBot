@@ -14,7 +14,7 @@ it is.
 The bot supports separate engines for the two accounts. Currently White is running [Fruit](http://www.fruitchess.com/) and 
 Black is running [Glaurung](http://www.glaurungchess.com/).
 
-Piece images from [here](http://ixian.com/chess/jin-piece-sets/)
+Piece images from [here](http://ixian.com/chess/jin-piece-sets/).
 
 **Dependencies**
  * Node module [chess.js](https://www.npmjs.org/package/chess.js) for various chess related functionality

@@ -152,6 +152,9 @@ function build_image(position) {
    var gray  = board.colorAllocate(230, 230, 230);
    var white = board.colorAllocate(255, 255, 255);
 
+   var light_blue = board.colorAllocateAlpha(100, 157, 234, 72);
+   var dark_blue  = board.colorAllocateAlpha( 40,  99, 234, 50);
+
    var pieces = [];
    pieces['B'] = gd.createFromPng('images/wb.png');
    pieces['K'] = gd.createFromPng('images/wk.png');
@@ -169,11 +172,12 @@ function build_image(position) {
 
    // Set up blank board with black border and gray and white squares
    board.filledRectangle(0, 0, 8 * tile_size + 2, 8 * tile_size + 2, black);
-   board.filledRectangle(1, 1, 8 * tile_size, 8 * tile_size, gray);
+   board.filledRectangle(1, 1, 8 * tile_size, 8 * tile_size, white);
+   board.filledRectangle(1, 1, 8 * tile_size, 8 * tile_size, light_blue);
    for(var i = 0; i < 8; i++) {
       for(var j = 0; j < 8; j++) {
          if ((i + j) % 2) {
-            board.filledRectangle(i * tile_size + 1, j * tile_size + 1, (i * tile_size) + tile_size, (j * tile_size) + tile_size, white);
+            board.filledRectangle(i * tile_size + 1, j * tile_size + 1, (i * tile_size) + tile_size, (j * tile_size) + tile_size, dark_blue);
          }
       }
    }
