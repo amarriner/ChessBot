@@ -81,6 +81,8 @@ function process_next_move() {
              if (err)
                 console.log(err);
              else {
+                // Interval for finding new moves. Modified on errors
+                var interval = parseInt(fs.readFileSync('interval', 'utf-8').replace('\n',''))
 
                 // I tried using the node uci module to process engine commands, but haven't been able
                 // to get it working correctly yet. Thus, for now, I'm parsing things manually which
@@ -98,8 +100,8 @@ function process_next_move() {
 
                    // Attempt the move against the Chess.JS object, erroring off if there was a problem
                    if (! c.move({ from: move.substr(0, 2), to: move.substring(2, 4) })) {
+                      interval = 10000;
                       console.log('*** ERROR MOVING!!! ***');
-                      console.log('Move: ' + move.substr(0, 2) + ' - ' + move.substring(2, 2));
                    }
 
                    // Otherwise, build a new PNG of the board, save the FEN and PGN output to file,
@@ -114,7 +116,7 @@ function process_next_move() {
 
                       // Tweet move and board
                       var tweet = '@ChessBot' + ((player.color == 'White') ? 'Black' : 'White') + ' ' +  
-                                  turn + '. ' + player.move + last_move;
+                                  turn + '. ' + player.move + last_move + ' #Chess ';
                       player.twitter.post(tweet, 'images/board.png', function(err, response) {
                          if (err)
                             console.log(err);
@@ -128,11 +130,12 @@ function process_next_move() {
                 }
 
                 else {
+                   interval = 10000;
                    console.log('*** ERROR FINDING MOVE!!! ***');
                 }
 
                 // Process the next turn on a timer
-                setTimeout(function() { process_next_move(); }, parseInt(fs.readFileSync('interval', 'utf-8').replace('\n','')));
+                setTimeout(function() { process_next_move(); }, interval);
              }
           }
    );
