@@ -1,4 +1,5 @@
 var fs      = require('fs');
+var ChessJS = require('chess.js');
 
 // Required to build the board image using GD
 // https://www.npmjs.org/package/node-gd
@@ -8,6 +9,16 @@ var gd      = require('node-gd');
 // https://www.npmjs.org/package/nexpect
 var nexpect = require('nexpect');
 var game;
+
+var c = new ChessJS.Chess();
+var startpos = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+if (! fs.existsSync('fen'))
+   fs.writeFileSync('fen', startpos + '\n');
+
+if (fs.existsSync('pgn')) {
+   c.load_pgn(fs.readFileSync('pgn', 'utf-8'));
+}
 
 var chess = [];
 chess['w'] = {
@@ -23,7 +34,7 @@ chess['b'] = {
 };
 
 function process_next_move() {
-   game = fs.readFileSync('game', 'utf-8');
+   game = fs.readFileSync('fen', 'utf-8');
    var position = game.split('\n')[game.split('\n').length - 2];
    var player = chess[position.split(' ')[1]];
    // console.log(player.color + ' to play :: ' + position);
@@ -50,14 +61,18 @@ function process_next_move() {
 
                 if (move) {
                    var turn = Math.ceil((game.split('\n').length - 1)/ 2);
-                   console.log(player.color + '(' + player.engine + ') moves ' + turn + '. ' + player.move + move); 
 
-                   position = position.split(' ');
-                   position[0] = adjust_fen(move, position[0]);
-                   position[1] = (position[1] == 'w') ? 'b' : 'w';
+                   if (! c.move({ from: move.substr(0, 2), to: move.substring(2, 4) })) {
+                      console.log('*** ERROR MOVING!!! ***');
+                      console.log('Move: ' + move.substr(0, 2) + ' - ' + move.substring(2, 2));
+                   }
 
-                   build_image(position.join(' '));
-                   fs.appendFileSync('game', position.join(' ') + '\n');
+                   build_image(c.fen());
+                   fs.appendFileSync('fen', c.fen() + '\n');
+                   fs.writeFileSync('pgn', c.pgn());
+
+                   var last_move = c.pgn().replace('  ', ' ').split(' ')[c.pgn().replace('  ', ' ').split(' ').length - 1];
+                   console.log(player.color + '(' + player.engine + ') moves ' + turn + '. ' + player.move + move + '(' + last_move + ')'); 
                 }
 
                 else {
@@ -68,130 +83,6 @@ function process_next_move() {
              }
           }
    );
-}
-
-function adjust_fen(move, position) {
-   var new_board = [];
-   for (var i = 0; i < 8; i++) {
-      new_board[i] = [];
-   }
-
-   for (var j = 0; j < 8; j++) {
-      var row = position.split('/')[j]
-
-      var col = 0;
-      for (var i = 0; i < row.length; i++) {
-         if (parseInt(row.charAt(i)) % 1 == 0) {
-            for (var k = 0; k < row.charAt(i); k++) {
-               new_board[7 - j][col] = '.';
-               col++;
-            }
-         }
-         else {
-            new_board[7 - j][col] = row.charAt(i);
-            col++;
-         }
-      }
-   }
-
-   var fromx = switch_x(move.charAt(0));
-   var fromy = move.charAt(1) - 1;
-   var tox   = switch_x(move.charAt(2));
-   var toy   = move.charAt(3) - 1;
-
-   // En passant
-   if (new_board[toy][tox] == '.' && new_board[fromy][fromx].toUpperCase() == 'P' && fromx != tox)
-      new_board[fromy][tox] = '.';
-
-   // Promote pawn
-   if (move.length == 5) 
-      new_board[toy][tox] = (new_board[fromy][fromx] == new_board[fromy][fromx].toUpperCase()) ? move.charAt(4).toUpperCase() : move.charAt(4);
-   else
-      new_board[toy][tox] = new_board[fromy][fromx];
-
-   // Black castle kingside
-   if (new_board[toy][tox] == 'k' && fromx == 4 && tox == 6) {
-      new_board[7][5] = 'r';
-      new_board[7][7] = '.';
-   }
-
-   // Black castle queenside
-   if (new_board[toy][tox] == 'k' && fromx == 4 && tox == 2) {
-      new_board[7][3] = 'r';
-      new_board[7][0] = '.';
-   }
-
-   // White castle kingside
-   if (new_board[toy][tox] == 'K' && fromx == 4 && tox == 6) {
-      new_board[0][5] = 'r';
-      new_board[0][7] = '.';
-   }
-
-   // White castle queenside
-   if (new_board[toy][tox] == 'K' && fromx == 4 && tox == 2) {
-      new_board[0][3] = 'r';
-      new_board[0][0] = '.';
-   }
-
-   new_board[fromy][fromx] = '.';
-
-   var new_fen = '';
-   for (var j = 7; j >= 0; j--) {
-      var int_count = 0;
-      var new_row = '';
-      for (var i = 0; i < 8; i++) {
-         if  (new_board[j][i] == '.') {
-            int_count++;
-         }
-         else {
-            if (int_count > 0) 
-               new_row = new_row + int_count;
-
-            new_row = new_row + new_board[j][i];
-            int_count = 0;
-         }
-      }
-
-      if (int_count > 0) 
-         new_row = new_row + int_count;
-
-      if (new_fen.length > 0) 
-         new_fen = new_fen + '/';
-
-      new_fen = new_fen + new_row;
-   }
-
-   // console.log('New: ' + new_fen);
-   return new_fen;
-}
-
-function switch_x(x) {
-   switch (x) {
-      case 'a':
-         return 0;
-         break;
-      case 'b':
-         return 1;
-         break;
-      case 'c':
-         return 2;
-         break;
-      case 'd':
-         return 3;
-         break;
-      case 'e':
-         return 4;
-         break;
-      case 'f':
-         return 5;
-         break;
-      case 'g':
-         return 6;
-         break;
-      case 'h':
-         return 7;
-         break;
-   }
 }
 
 // Builds a PNG image of the given position in FEN format
