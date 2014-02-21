@@ -1,5 +1,8 @@
 var fs      = require('fs');
-var ChessJS = require('chess.js');
+
+// Small local module to hold twitter API keys outside main file
+var Keys    = require('keys');
+var k       = new Keys();
 
 // Required to build the board image using GD
 // https://www.npmjs.org/package/node-gd
@@ -10,39 +13,52 @@ var gd      = require('node-gd');
 var nexpect = require('nexpect');
 var game;
 
+// Stores Chess object as well as provides various chess funcitonality
+var ChessJS = require('chess.js');
 var c = new ChessJS.Chess();
+
+// Starting FEN position
 var startpos = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
+// If no FEN file exists, create it with the start position
 if (! fs.existsSync('fen'))
    fs.writeFileSync('fen', startpos + '\n');
 
+// If there is an existing PGN file, load it into the chess object
+// This is mainly for when the bot crashes
 if (fs.existsSync('pgn')) {
    c.load_pgn(fs.readFileSync('pgn', 'utf-8'));
 }
 
+// Various variables pertaining to the two players
 var chess = [];
 chess['w'] = {
    color : 'White',
-   engine: 'fruit',
+   engine: fs.readFileSync('white.engine', 'utf-8').split('\n')[0],
    move  : ''
 };
 
 chess['b'] = {
    color : 'Black',
-   engine: 'glaurung',
+   engine: fs.readFileSync('black.engine', 'utf-8').split('\n')[0],
    move  : '... '
 };
 
+// Main function
 function process_next_move() {
+
+   // Load the FEN file into a variable and determine the current position and player
+   // This can be refactored since the Chess.js object holds all this now
    game = fs.readFileSync('fen', 'utf-8');
    var position = game.split('\n')[game.split('\n').length - 2];
    var player = chess[position.split(' ')[1]];
-   // console.log(player.color + ' to play :: ' + position);
 
+   // Spawn a process with the correct chess engine, and run UCI commands through it to process a turn
+   // http://wbec-ridderkerk.nl/html/UCIProtocol.html
    nexpect.spawn(player.engine, options={verbose: false})
           .sendline('uci')
           .sendline('ucinewgame')
-          .sendline('position fen ' + position)
+          .sendline('position fen ' + position)     // Moved the engine's board the current position
           .sendline('go')
           .wait('bestmove')
           .sendline('quit')
@@ -51,6 +67,9 @@ function process_next_move() {
                 console.log(err);
              else {
 
+                // I tried using the node uci module to process engine commands, but haven't been able
+                // to get it working correctly yet. Thus, for now, I'm parsing things manually which
+                // seems to be troublesome with varying engines as they're not standardized
                 var move = '';
                 if (player.engine == 'fruit' ||
                     player.engine == 'glaurung')
@@ -59,26 +78,35 @@ function process_next_move() {
                 else if (player.engine == 'stockfish')
                    move = output[output.length - 1].replace('bestmove ', '');
 
+                // If we found a "valid" move from the engines STDOUT
                 if (move) {
-                   var turn = Math.ceil((game.split('\n').length - 1)/ 2);
 
+                   // Attempt the move against the Chess.JS object, erroring off if there was a problem
                    if (! c.move({ from: move.substr(0, 2), to: move.substring(2, 4) })) {
                       console.log('*** ERROR MOVING!!! ***');
                       console.log('Move: ' + move.substr(0, 2) + ' - ' + move.substring(2, 2));
                    }
 
-                   build_image(c.fen());
-                   fs.appendFileSync('fen', c.fen() + '\n');
-                   fs.writeFileSync('pgn', c.pgn());
+                   // Otherwise, build a new PNG of the board, and save the FEN and PGN output to file
+                   else {
+                      build_image(c.fen());
+                      fs.appendFileSync('fen', c.fen() + '\n');
+                      fs.writeFileSync('pgn', c.pgn());
 
-                   var last_move = c.pgn().replace('  ', ' ').split(' ')[c.pgn().replace('  ', ' ').split(' ').length - 1];
-                   console.log(player.color + '(' + player.engine + ') moves ' + turn + '. ' + player.move + move + '(' + last_move + ')'); 
+                      // Debug console output
+                      var turn = Math.ceil((game.split('\n').length - 1)/ 2);
+                      var last_move = c.pgn().replace('  ', ' ').split(' ')[c.pgn().replace('  ', ' ').split(' ').length - 1];
+                      console.log(player.color + ' moves ' + turn + '. ' + 
+                                  player.move + last_move + ' (' + 
+                                  player.engine + ': ' + move + ')'); 
+                   }
                 }
 
                 else {
                    console.log('*** ERROR FINDING MOVE!!! ***');
                 }
 
+                // Process the next turn on a timer
                 setTimeout(function() { process_next_move(); }, parseInt(fs.readFileSync('interval', 'utf-8').replace('\n','')));
              }
           }
