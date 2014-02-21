@@ -1,5 +1,10 @@
+fen
+game
+pgn
+images/board.png
 node_modules/chess.js/
 node_modules/nexpect/
 node_modules/node-gd/
+node_modules/request
 node_modules/uci/
 

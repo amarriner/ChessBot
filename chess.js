@@ -4,6 +4,9 @@ var fs      = require('fs');
 var Keys    = require('keys');
 var k       = new Keys();
 
+// Twitter function to post images
+var twitter_update_with_media = require('twitter_update_with_media');
+
 // Required to build the board image using GD
 // https://www.npmjs.org/package/node-gd
 var gd      = require('node-gd');
@@ -33,15 +36,27 @@ if (fs.existsSync('pgn')) {
 // Various variables pertaining to the two players
 var chess = [];
 chess['w'] = {
-   color : 'White',
-   engine: fs.readFileSync('white.engine', 'utf-8').split('\n')[0],
-   move  : ''
+   color   : 'White',
+   engine  : fs.readFileSync('white.engine', 'utf-8').split('\n')[0],
+   move    : '',
+   twitter : new twitter_update_with_media({
+                    consumer_key    : k.twitter_consumer_key,
+                    consumer_secret : k.twitter_consumer_secret,
+                    token           : k.white_twitter_access_token,
+                    token_secret    : k.white_twitter_access_token_secret
+             })
 };
 
 chess['b'] = {
-   color : 'Black',
-   engine: fs.readFileSync('black.engine', 'utf-8').split('\n')[0],
-   move  : '... '
+   color   : 'Black',
+   engine  : fs.readFileSync('black.engine', 'utf-8').split('\n')[0],
+   move    : '... ',
+   twitter : new twitter_update_with_media({
+                    consumer_key    : k.twitter_consumer_key,
+                    consumer_secret : k.twitter_consumer_secret,
+                    token           : k.black_twitter_access_token,
+                    token_secret    : k.black_twitter_access_token_secret
+             })
 };
 
 // Main function
@@ -87,15 +102,25 @@ function process_next_move() {
                       console.log('Move: ' + move.substr(0, 2) + ' - ' + move.substring(2, 2));
                    }
 
-                   // Otherwise, build a new PNG of the board, and save the FEN and PGN output to file
+                   // Otherwise, build a new PNG of the board, save the FEN and PGN output to file,
+                   // tweet result, and print debug output 
                    else {
                       build_image(c.fen());
                       fs.appendFileSync('fen', c.fen() + '\n');
                       fs.writeFileSync('pgn', c.pgn());
 
-                      // Debug console output
                       var turn = Math.ceil((game.split('\n').length - 1)/ 2);
                       var last_move = c.pgn().replace('  ', ' ').split(' ')[c.pgn().replace('  ', ' ').split(' ').length - 1];
+
+                      // Tweet move and board
+                      var tweet = '@ChessBot' + ((player.color == 'White') ? 'Black' : 'White') + ' ' +  
+                                  turn + '. ' + player.move + last_move;
+                      player.twitter.post(tweet, 'images/board.png', function(err, response) {
+                         if (err)
+                            console.log(err);
+                      });
+
+                      // Debug console output
                       console.log(player.color + ' moves ' + turn + '. ' + 
                                   player.move + last_move + ' (' + 
                                   player.engine + ': ' + move + ')'); 
