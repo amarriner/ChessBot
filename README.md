@@ -27,6 +27,7 @@ Piece images from [here](http://ixian.com/chess/jin-piece-sets/).
  * Recognize end of game and automatically start a new one
  * Integrate opening books into the engines
  * Investigate using stronger move lookups
+ * Replace hard-coded hashtag interval
  * Remove old FEN processing and rely solely on the chess.js object
 
 #### Sample Tweet
