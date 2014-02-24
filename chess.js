@@ -76,9 +76,10 @@ function process_next_move() {
    // http://wbec-ridderkerk.nl/html/UCIProtocol.html
    nexpect.spawn(player.engine, options={verbose: false})
           .sendline('uci')
+          .sendline('set ownbook true')             // Use engine's internal opening book
           .sendline('ucinewgame')
           .sendline('position fen ' + position)     // Moved the engine's board the current position
-          .sendline('go')
+          .sendline('go depth 20 movetime 300000')  // Stronger depth search, but limit to 5 mintes
           .wait('bestmove')
           .sendline('quit')
           .run(function (err, output) {
