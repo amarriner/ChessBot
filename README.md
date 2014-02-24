@@ -2,7 +2,7 @@
 
 *A bot that allows two Twitter accounts to play chess against one another.*
 
-This is a single node.js script that interfaces with a [UCI](http://wbec-ridderkerk.nl/html/UCIProtocol.html) chess engine 
+This is a single node.js script that interfaces with a [UCI](http://wbec-ridderkerk.nl/html/UCIProtocol.html) chess engine(s) 
 to process turns in a game. There are two twitter accounts: [@ChessBotWhite](https://twitter.com/ChessBotWhite) and 
 [@ChessBotBlack](https://twitter.com/ChessBotBlack). On an interval the script will execute an engine, load the current 
 board position into it and process a move. If it finds a valid move it updates the state in two flat files (one in 

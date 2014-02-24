@@ -62,6 +62,10 @@ chess['b'] = {
 // Main function
 function process_next_move() {
 
+   if (c.game_over()) {
+      process_game_over();
+   }
+
    // Load the FEN file into a variable and determine the current position and player
    // This can be refactored since the Chess.js object holds all this now
    game = fs.readFileSync('fen', 'utf-8');
@@ -114,9 +118,14 @@ function process_next_move() {
                       var turn = Math.ceil((game.split('\n').length - 1)/ 2);
                       var last_move = c.pgn().replace('  ', ' ').split(' ')[c.pgn().replace('  ', ' ').split(' ').length - 1];
 
+                      // Put a #Chess hashtag every 24 turns on white's turn
+                      var hashtag = '';
+                      if (turn % 24 == 0 && player.color == 'White') 
+                         hashtag = '#Chess';
+
                       // Tweet move and board
                       var tweet = '@ChessBot' + ((player.color == 'White') ? 'Black' : 'White') + ' ' +  
-                                  turn + '. ' + player.move + last_move + ' #Chess ';
+                                  turn + '. ' + player.move + last_move + ' ' + hashtag + ' ';
                       player.twitter.post(tweet, 'images/board.png', function(err, response) {
                          if (err)
                             console.log(err);
@@ -205,5 +214,23 @@ function build_image(position) {
    board.png('images/board.png');
 }
 
-process_next_move();
+// Function to process game over states
+function process_game_over() {
+   console.log('Game over!');
 
+   var timestamp = new Date().getTime();
+
+   // Create a saves directory if it doesn't exist
+   if (! fs.existsSync('saves'))
+      fs.mkdir('saves');
+
+   // Move the current games FEN and PGn files to the saves directory with a new filename
+   fs.renameSync('fen', 'saves/' + timestamp + '.fen');
+   fs.renameSync('pgn', 'saves/' + timestamp + '.pgn');
+
+   // Reset FEN file and chess object
+   fs.writeFileSync('fen', startpos + '\n');
+   c = new ChessJS.Chess();
+}
+
+process_next_move();
