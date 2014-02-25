@@ -42,4 +42,4 @@ Piece images from [here](http://ixian.com/chess/jin-piece-sets/).
 
 #### Sample Board
 
-![Sample Board](https://pbs.twimg.com/media/BhBVlocIUAEpLEd.png:large "Sample Board")
+![Sample Board](https://pbs.twimg.com/media/BhVr0D8IUAEd1wh.png "Sample Board")
