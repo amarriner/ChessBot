@@ -79,7 +79,7 @@ function process_next_move() {
           .sendline('set ownbook true')             // Use engine's internal opening book
           .sendline('ucinewgame')
           .sendline('position fen ' + position)     // Moved the engine's board the current position
-          .sendline('go depth 20 movetime 300000')  // Stronger depth search, but limit to 5 mintes
+          .sendline('go depth 20 movetime 300000')    // Stronger depth search, but limit to 5 mintes
           .wait('bestmove')
           .sendline('quit')
           .run(function (err, output) {
@@ -93,55 +93,65 @@ function process_next_move() {
                 // to get it working correctly yet. Thus, for now, I'm parsing things manually which
                 // seems to be troublesome with varying engines as they're not standardized
                 var move = '';
-                if (player.engine == 'fruit' ||
-                    player.engine == 'glaurung')
-                   move = output[output.length - 1].split(' ')[1];
 
-                else if (player.engine == 'stockfish')
-                   move = output[output.length - 1].replace('bestmove ', '');
+                for (var z = 1; z <= 5; z++) {
+                   move = output[output.length - z].replace('bestmove ', '');
 
-                // If we found a "valid" move from the engines STDOUT
-                if (move) {
+                   if (move.indexOf(' ponder') >= 0)
+                      move = move.substring(0, move.indexOf(' ponder'));
 
-                   // Attempt the move against the Chess.JS object, erroring off if there was a problem
-                   if (! c.move({ from: move.substr(0, 2), to: move.substring(2, 4) })) {
-                      interval = 10000;
-                      console.log('*** ERROR MOVING!!! ***');
+                   if (move.indexOf(' ') >= 0)
+                      move = move.split(' ')[0];
+
+                   // If we found a "valid" move from the engines STDOUT
+                   if (move) {
+
+                      // Attempt the move against the Chess.JS object, erroring off if there was a problem
+                      if (! c.move({ from: move.substr(0, 2), to: move.substring(2, 4) })) {
+                         interval = 10000;
+                         console.log('*** ERROR MOVING!!! *** (' + move + ' - ' + output[output.length - z] + ')');
+                      }
+
+                      // Otherwise, build a new PNG of the board, save the FEN and PGN output to file,
+                      // tweet result, and print debug output 
+                      else {
+                         z = 1000;
+
+                         // Reset the interval in case it was shortened by error
+                         interval = parseInt(fs.readFileSync('interval', 'utf-8').replace('\n',''))
+ 
+                         build_image(c.fen());
+                         fs.appendFileSync('fen', c.fen() + '\n');
+                         fs.writeFileSync('pgn', c.pgn());
+
+                         var turn = Math.ceil((game.split('\n').length - 1)/ 2);
+                         var last_move = c.pgn().replace('  ', ' ').split(' ')[c.pgn().replace('  ', ' ').split(' ').length - 1];
+
+                         // Put a #Chess hashtag every 24 turns on white's turn
+                         var hashtag = '';
+                         if (turn % 24 == 0 && player.color == 'White') 
+                            hashtag = '#Chess';
+
+                         // Tweet move and board
+                         var tweet = '@ChessBot' + ((player.color == 'White') ? 'Black' : 'White') + ' ' +  
+                                     turn + '. ' + player.move + last_move + ' ' + hashtag + ' ';
+                         player.twitter.post(tweet, 'images/board.png', function(err, response) {
+                            if (err)
+                               console.log(err);
+                         });
+
+                         // Debug console output
+                         console.log(player.color + ' moves ' + turn + '. ' + 
+                                     player.move + last_move + ' (' + 
+                                     player.engine + ': ' + move + ')'); 
+                      
+                      }
                    }
 
-                   // Otherwise, build a new PNG of the board, save the FEN and PGN output to file,
-                   // tweet result, and print debug output 
                    else {
-                      build_image(c.fen());
-                      fs.appendFileSync('fen', c.fen() + '\n');
-                      fs.writeFileSync('pgn', c.pgn());
-
-                      var turn = Math.ceil((game.split('\n').length - 1)/ 2);
-                      var last_move = c.pgn().replace('  ', ' ').split(' ')[c.pgn().replace('  ', ' ').split(' ').length - 1];
-
-                      // Put a #Chess hashtag every 24 turns on white's turn
-                      var hashtag = '';
-                      if (turn % 24 == 0 && player.color == 'White') 
-                         hashtag = '#Chess';
-
-                      // Tweet move and board
-                      var tweet = '@ChessBot' + ((player.color == 'White') ? 'Black' : 'White') + ' ' +  
-                                  turn + '. ' + player.move + last_move + ' ' + hashtag + ' ';
-                      player.twitter.post(tweet, 'images/board.png', function(err, response) {
-                         if (err)
-                            console.log(err);
-                      });
-
-                      // Debug console output
-                      console.log(player.color + ' moves ' + turn + '. ' + 
-                                  player.move + last_move + ' (' + 
-                                  player.engine + ': ' + move + ')'); 
+                      interval = 10000;
+                      console.log('*** ERROR FINDING MOVE!!! (' + move + ') ***');
                    }
-                }
-
-                else {
-                   interval = 10000;
-                   console.log('*** ERROR FINDING MOVE!!! ***');
                 }
 
                 // Process the next turn on a timer
