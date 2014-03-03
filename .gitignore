@@ -6,5 +6,6 @@ node_modules/chess.js/
 node_modules/nexpect/
 node_modules/node-gd/
 node_modules/request
+node_modules/twit/
 node_modules/uci/
 saves
